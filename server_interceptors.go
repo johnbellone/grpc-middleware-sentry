@@ -8,33 +8,37 @@ import(
 	"google.golang.org/grpc"
 )
 
+func recoverWithSentry(hub *sentry.Hub, ctx context.Context, o *serveroptions) {
+	if err := recover(); err != nil {
+		eventID := hub.RecoverWithContext(ctx, err)
+		if eventID != nil && o.WaitForDelivery {
+			hub.Flush(o.Timeout)
+		}
+
+		if o.Repanic {
+			panic(err)
+		}
+	}
+}
+
 func UnaryServerInterceptor(opts ...ServerOption) grpc.UnaryServerInterceptor {
 	o := evaluateServerOptions(opts)
 	return func(ctx context.Context,
 		req interface{},
 		info *grpc.UnaryServerInfo,
 		handler grpc.UnaryHandler) (interface{}, error) {
-		panicked := true
+
 		hub := sentry.GetHubFromContext(ctx)
 		if hub == nil {
 			hub = sentry.CurrentHub().Clone()
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
-		defer func() {
-			var err error
-			if err := recover(); err != nil || panicked {
-				hub.RecoverWithContext(ctx, err)
-			}
-
-			if o.Repanic {
-				panic(err)
-			}
-		}()
+		// TODO: Perhaps makes sense to use SetRequestBody instead?
+		hub.Scope().SetExtra("requestBody", req)
+		defer recoverWithSentry(hub, ctx, o)
 
 		resp, err := handler(ctx, req)
-		panicked = false
-
 		if o.ReportOn(err) {
 			hub.CaptureException(err)
 		}
@@ -45,8 +49,11 @@ func UnaryServerInterceptor(opts ...ServerOption) grpc.UnaryServerInterceptor {
 
 func StreamServerInterceptor(opts ...ServerOption) grpc.StreamServerInterceptor {
 	o := evaluateServerOptions(opts)
-	return func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
-		panicked := true
+	return func(srv interface{},
+		ss grpc.ServerStream,
+		info *grpc.StreamServerInfo,
+		handler grpc.StreamHandler) error {
+
 		ctx := ss.Context()
 		hub := sentry.GetHubFromContext(ctx)
 		if hub == nil {
@@ -54,20 +61,9 @@ func StreamServerInterceptor(opts ...ServerOption) grpc.StreamServerInterceptor 
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
-		defer func() {
-			var err error
-			if err := recover(); err != nil || panicked {
-				hub.RecoverWithContext(ctx, err)
-			}
-
-			if o.Repanic {
-				panic(err)
-			}
-		}()
+		defer recoverWithSentry(hub, ctx, o)
 
 		err := handler(srv, ss)
-		panicked = false
-
 		if err != nil && o.ReportOn(err) {
 			hub.CaptureException(err)
 		}

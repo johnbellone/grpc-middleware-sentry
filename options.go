@@ -1,6 +1,8 @@
 package grpc_sentry
 
 import (
+	"time"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
@@ -8,24 +10,39 @@ import (
 var (
 	defaultServerOptions = &serveroptions{
 		Repanic: false,
+		WaitForDelivery: false,
 		ReportOn: ReportAlways,
+		Timeout: 1 * time.Second,
 	}
 
-	defaultClientOptions = &clientoptions{}
+	defaultClientOptions = &clientoptions{
+		Repanic: false,
+		WaitForDelivery: false,
+		ReportOn: ReportAlways,
+		Timeout: 1 * time.Second,
+	}
 )
 
-type clientoptions struct {
-	ReportOn func(error) bool
-}
-
-type serveroptions struct {
+type options struct {
+	// Repanic configures whether Sentry should repanic after recovery.
 	Repanic bool
 
+	// WaitForDelivery configures whether you want to block the request before moving forward with the response.
+	WaitForDelivery bool
+
+	// Timeout for the event delivery requests.
+	Timeout time.Duration
+
 	ReportOn func(error) bool
 }
 
+type clientoptions options
+
+type serveroptions options
+
 func evaluateClientOptions(opts []ClientOption) *clientoptions {
-	optCopy := &clientoptions{}
+
+optCopy := &clientoptions{}
 	*optCopy = *defaultClientOptions
 	for _, o := range opts {
 		o(optCopy)
