@@ -1,4 +1,4 @@
-module github.com/johnbellone/go-grpc-sentry
+module github.com/johnbellone/grpc-middleware-sentry
 
 go 1.15
 
