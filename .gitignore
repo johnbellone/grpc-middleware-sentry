@@ -1,0 +1,7 @@
+tmp/
+log/
+.env
+.DS_Store
+server.crt
+server.key
+server.pub
