@@ -35,6 +35,7 @@ func UnaryServerInterceptor(opts ...ServerOption) grpc.UnaryServerInterceptor {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
+		// TODO: Add tags for metadata information.
 		// TODO: Perhaps makes sense to use SetRequestBody instead?
 		hub.Scope().SetExtra("requestBody", req)
 		defer recoverWithSentry(hub, ctx, o)

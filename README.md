@@ -3,6 +3,8 @@
 ## Usage
 
 ``` go
+package main
+
 import (
     "github.com/getsentry/sentry-go"
 
