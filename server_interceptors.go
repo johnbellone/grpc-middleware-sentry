@@ -4,6 +4,7 @@ import(
 	"context"
 
 	"github.com/getsentry/sentry-go"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 
 	"google.golang.org/grpc"
 )
@@ -61,9 +62,12 @@ func StreamServerInterceptor(opts ...ServerOption) grpc.StreamServerInterceptor 
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
+		stream := grpc_middleware.WrapServerStream(ss)
+		stream.WrappedContext = ctx
+
 		defer recoverWithSentry(hub, ctx, o)
 
-		err := handler(srv, ss)
+		err := handler(srv, stream)
 		if err != nil && o.ReportOn(err) {
 			hub.CaptureException(err)
 		}
