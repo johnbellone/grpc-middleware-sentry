@@ -25,7 +25,7 @@ func UnaryClientInterceptor(opts ...ClientOption) grpc.UnaryClientInterceptor {
 
 		err := invoker(ctx, method, req, reply, cc, callOpts...)
 
-		if o.ReportOn(err) {
+		if err != nil && o.ReportOn(err) {
 			hub.CaptureException(err)
 		}
 
@@ -50,7 +50,7 @@ func StreamClientInterceptor(opts ...ClientOption) grpc.StreamClientInterceptor 
 
 		clientStream, err := streamer(ctx, desc, cc, method, callOpts...)
 
-		if o.ReportOn(err) {
+		if err != nil && o.ReportOn(err) {
 			hub.CaptureException(err)
 		}
 
