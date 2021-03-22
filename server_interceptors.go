@@ -46,7 +46,7 @@ func UnaryServerInterceptor(opts ...ServerOption) grpc.UnaryServerInterceptor {
 		defer recoverWithSentry(hub, ctx, o)
 
 		resp, err := handler(ctx, req)
-		if o.ReportOn(err) {
+		if err != nil && o.ReportOn(err) {
 			tags := grpc_tags.Extract(ctx)
 			for k, v := range tags.Values() {
 				hub.Scope().SetTag(k, v.(string))
@@ -83,7 +83,7 @@ func StreamServerInterceptor(opts ...ServerOption) grpc.StreamServerInterceptor 
 		defer recoverWithSentry(hub, ctx, o)
 
 		err := handler(srv, stream)
-		if o.ReportOn(err) {
+		if err != nil && o.ReportOn(err) {
 			tags := grpc_tags.Extract(ctx)
 			for k, v := range tags.Values() {
 				hub.Scope().SetTag(k, v.(string))
