@@ -11,7 +11,7 @@ import(
 	"google.golang.org/grpc"
 )
 
-func recoverWithSentry(hub *sentry.Hub, ctx context.Context, o *serveroptions) {
+func recoverWithSentry(hub *sentry.Hub, ctx context.Context, o *options) {
 	if err := recover(); err != nil {
 		eventID := hub.RecoverWithContext(ctx, err)
 		if eventID != nil && o.WaitForDelivery {
@@ -24,8 +24,8 @@ func recoverWithSentry(hub *sentry.Hub, ctx context.Context, o *serveroptions) {
 	}
 }
 
-func UnaryServerInterceptor(opts ...ServerOption) grpc.UnaryServerInterceptor {
-	o := evaluateServerOptions(opts)
+func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
+	o := newConfig(opts)
 	return func(ctx context.Context,
 		req interface{},
 		info *grpc.UnaryServerInfo,
@@ -59,8 +59,8 @@ func UnaryServerInterceptor(opts ...ServerOption) grpc.UnaryServerInterceptor {
 	}
 }
 
-func StreamServerInterceptor(opts ...ServerOption) grpc.StreamServerInterceptor {
-	o := evaluateServerOptions(opts)
+func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
+	o := newConfig(opts)
 	return func(srv interface{},
 		ss grpc.ServerStream,
 		info *grpc.StreamServerInfo,
