@@ -8,8 +8,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-func UnaryClientInterceptor(opts ...ClientOption) grpc.UnaryClientInterceptor {
-	o := evaluateClientOptions(opts)
+func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
+	o := newConfig(opts)
 	return func(ctx context.Context,
 		method string,
 		req, reply interface{},
@@ -33,8 +33,8 @@ func UnaryClientInterceptor(opts ...ClientOption) grpc.UnaryClientInterceptor {
 	}
 }
 
-func StreamClientInterceptor(opts ...ClientOption) grpc.StreamClientInterceptor {
-	o := evaluateClientOptions(opts)
+func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
+	o := newConfig(opts)
 	return func(ctx context.Context,
 		desc *grpc.StreamDesc,
 		cc *grpc.ClientConn,
