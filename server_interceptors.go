@@ -1,12 +1,13 @@
 package grpc_sentry
 
-import(
+import (
 	"context"
-
+	"encoding/hex"
 	"github.com/getsentry/sentry-go"
-
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_tags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	"google.golang.org/grpc/metadata"
+	"regexp"
 
 	"google.golang.org/grpc"
 )
@@ -37,7 +38,9 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
-		span := sentry.StartSpan(ctx, "grpc.server")
+		md, _ := metadata.FromIncomingContext(ctx) // nil check in ContinueFromGrpcMetadata
+		span := sentry.StartSpan(ctx, "grpc.server", ContinueFromGrpcMetadata(md))
+		ctx = span.Context()
 		defer span.Finish()
 
 		// TODO: Perhaps makes sense to use SetRequestBody instead?
@@ -73,7 +76,9 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
-		span := sentry.StartSpan(ctx, "grpc.server")
+		md, _ := metadata.FromIncomingContext(ctx) // nil check in ContinueFromGrpcMetadata
+		span := sentry.StartSpan(ctx, "grpc.server", ContinueFromGrpcMetadata(md))
+		ctx = span.Context()
 		defer span.Finish()
 
 		stream := grpc_middleware.WrapServerStream(ss)
@@ -93,5 +98,49 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		}
 
 		return err
+	}
+}
+
+// ContinueFromGrpcMetadata returns a span option that updates the span to continue
+// an existing trace. If it cannot detect an existing trace in the request, the
+// span will be left unchanged.
+func ContinueFromGrpcMetadata(md metadata.MD) sentry.SpanOption {
+	return func(s *sentry.Span) {
+		if md == nil {
+			return
+		}
+
+		trace, ok := md["sentry-trace"]
+		if !ok {
+			return
+		}
+		if len(trace) != 1 {
+			return
+		}
+		if trace[0] == "" {
+			return
+		}
+		updateFromSentryTrace(s, []byte(trace[0]))
+	}
+}
+
+// Re-export of functions from tracing.go of sentry-go
+var sentryTracePattern = regexp.MustCompile(`^([[:xdigit:]]{32})-([[:xdigit:]]{16})(?:-([01]))?$`)
+
+func updateFromSentryTrace(s *sentry.Span, header []byte) {
+	m := sentryTracePattern.FindSubmatch(header)
+	if m == nil {
+		// no match
+		return
+	}
+	_, _ = hex.Decode(s.TraceID[:], m[1])
+	_, _ = hex.Decode(s.ParentSpanID[:], m[2])
+	if len(m[3]) != 0 {
+		switch m[3][0] {
+		case '0':
+			s.Sampled = sentry.SampledFalse
+		case '1':
+			s.Sampled = sentry.SampledTrue
+		}
 	}
 }

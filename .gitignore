@@ -5,3 +5,4 @@ log/
 server.crt
 server.key
 server.pub
+.idea/
