@@ -38,6 +38,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 		}
 
 		span := sentry.StartSpan(ctx, "grpc.server")
+		ctx = span.Context()
 		defer span.Finish()
 
 		// TODO: Perhaps makes sense to use SetRequestBody instead?
@@ -74,6 +75,7 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		}
 
 		span := sentry.StartSpan(ctx, "grpc.server")
+		ctx = span.Context()
 		defer span.Finish()
 
 		stream := grpc_middleware.WrapServerStream(ss)
