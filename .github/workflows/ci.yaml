@@ -1,4 +1,4 @@
-name: go-workflow
+name: build
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go: [ '1.16', '1.15', '1.14', '1.13' ]
+        go: [ '1.17', '1.16', '1.15' ]
     name: Go ${{ matrix.go }}
     steps:
       - uses: actions/checkout@v2
