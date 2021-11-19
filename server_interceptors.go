@@ -3,11 +3,14 @@ package grpc_sentry
 import (
 	"context"
 	"encoding/hex"
+	"regexp"
+
 	"github.com/getsentry/sentry-go"
 	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
 	grpc_tags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"regexp"
+	"google.golang.org/grpc/status"
 
 	"google.golang.org/grpc"
 )
@@ -57,6 +60,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 
 			hub.CaptureException(err)
 		}
+		span.Status = toSpanStatus(status.Code(err))
 
 		return resp, err
 	}
@@ -96,6 +100,7 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 
 			hub.CaptureException(err)
 		}
+		span.Status = toSpanStatus(status.Code(err))
 
 		return err
 	}
@@ -142,5 +147,46 @@ func updateFromSentryTrace(s *sentry.Span, header []byte) {
 		case '1':
 			s.Sampled = sentry.SampledTrue
 		}
+	}
+}
+
+func toSpanStatus(code codes.Code) sentry.SpanStatus {
+	switch code {
+	case codes.OK:
+		return sentry.SpanStatusOK
+	case codes.Canceled:
+		return sentry.SpanStatusCanceled
+	case codes.Unknown:
+		return sentry.SpanStatusUnknown
+	case codes.InvalidArgument:
+		return sentry.SpanStatusInvalidArgument
+	case codes.DeadlineExceeded:
+		return sentry.SpanStatusDeadlineExceeded
+	case codes.NotFound:
+		return sentry.SpanStatusNotFound
+	case codes.AlreadyExists:
+		return sentry.SpanStatusAlreadyExists
+	case codes.PermissionDenied:
+		return sentry.SpanStatusPermissionDenied
+	case codes.ResourceExhausted:
+		return sentry.SpanStatusResourceExhausted
+	case codes.FailedPrecondition:
+		return sentry.SpanStatusFailedPrecondition
+	case codes.Aborted:
+		return sentry.SpanStatusAborted
+	case codes.OutOfRange:
+		return sentry.SpanStatusOutOfRange
+	case codes.Unimplemented:
+		return sentry.SpanStatusUnimplemented
+	case codes.Internal:
+		return sentry.SpanStatusInternalError
+	case codes.Unavailable:
+		return sentry.SpanStatusUnavailable
+	case codes.DataLoss:
+		return sentry.SpanStatusDataLoss
+	case codes.Unauthenticated:
+		return sentry.SpanStatusUnauthenticated
+	default:
+		return sentry.SpanStatusUndefined
 	}
 }
