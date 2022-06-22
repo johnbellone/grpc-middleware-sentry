@@ -23,14 +23,14 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 			hub = sentry.CurrentHub().Clone()
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
+		
+		hub.Scope().SetTransaction(method)
 
 		span := sentry.StartSpan(ctx, "grpc.client")
 		ctx = span.Context()
 		md := metadata.Pairs("sentry-trace", span.ToSentryTrace())
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()
-
-		hub.Scope().SetTransaction(method)
 
 		err := invoker(ctx, method, req, reply, cc, callOpts...)
 
@@ -56,14 +56,14 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 			hub = sentry.CurrentHub().Clone()
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
+		
+		hub.Scope().SetTransaction(method)
 
 		span := sentry.StartSpan(ctx, "grpc.client")
 		ctx = span.Context()
 		md := metadata.Pairs("sentry-trace", span.ToSentryTrace())
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()
-
-		hub.Scope().SetTransaction(method)
 
 		clientStream, err := streamer(ctx, desc, cc, method, callOpts...)
 
