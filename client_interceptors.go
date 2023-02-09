@@ -2,9 +2,9 @@ package grpc_sentry
 
 import (
 	"context"
-	"google.golang.org/grpc/metadata"
 
 	"github.com/getsentry/sentry-go"
+	"google.golang.org/grpc/metadata"
 
 	"google.golang.org/grpc"
 )
@@ -26,7 +26,12 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 
 		span := sentry.StartSpan(ctx, "grpc.client")
 		ctx = span.Context()
-		md := metadata.Pairs("sentry-trace", span.ToSentryTrace())
+		md, ok := metadata.FromOutgoingContext(ctx)
+		if ok {
+			md.Append("sentry-trace", span.ToSentryTrace())
+		} else {
+			md = metadata.Pairs("sentry-trace", span.ToSentryTrace())
+		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()
 
@@ -59,7 +64,12 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 
 		span := sentry.StartSpan(ctx, "grpc.client")
 		ctx = span.Context()
-		md := metadata.Pairs("sentry-trace", span.ToSentryTrace())
+		md, ok := metadata.FromOutgoingContext(ctx)
+		if ok {
+			md.Append("sentry-trace", span.ToSentryTrace())
+		} else {
+			md = metadata.Pairs("sentry-trace", span.ToSentryTrace())
+		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()
 
