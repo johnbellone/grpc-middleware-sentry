@@ -1,0 +1,9 @@
+{
+    "[go]": {
+        "editor.formatOnSave": false,
+        "editor.defaultFormatter": "golang.go",
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": false
+        }
+    }
+}
