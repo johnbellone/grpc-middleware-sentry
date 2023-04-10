@@ -35,8 +35,6 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()
 
-		hub.Scope().SetTransaction(method)
-
 		err := invoker(ctx, method, req, reply, cc, callOpts...)
 
 		if err != nil && o.ReportOn(err) {
@@ -72,8 +70,6 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()
-
-		hub.Scope().SetTransaction(method)
 
 		clientStream, err := streamer(ctx, desc, cc, method, callOpts...)
 

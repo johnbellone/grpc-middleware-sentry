@@ -48,7 +48,6 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 
 		// TODO: Perhaps makes sense to use SetRequestBody instead?
 		hub.Scope().SetExtra("requestBody", req)
-		hub.Scope().SetTransaction(info.FullMethod)
 		defer recoverWithSentry(hub, ctx, o)
 
 		resp, err := handler(ctx, req)
@@ -88,7 +87,6 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		stream := grpc_middleware.WrapServerStream(ss)
 		stream.WrappedContext = ctx
 
-		hub.Scope().SetTransaction(info.FullMethod)
 		defer recoverWithSentry(hub, ctx, o)
 
 		err := handler(srv, stream)
