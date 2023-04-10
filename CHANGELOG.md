@@ -13,7 +13,7 @@ Types of changes:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
-## [Unreleased]
+## [0.3]
 
 ### Changed
 
