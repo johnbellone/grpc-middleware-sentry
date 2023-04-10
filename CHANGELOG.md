@@ -17,7 +17,9 @@ Types of changes:
 
 ### Changed
 
-- Update to latest version of Sentry SDK and indirect dependencies.
+- Update to v0.20 version of Sentry SDK (and indirects).
+- Update to v1.54.0 version of gRPC SDK (and indirects).
+- Update to v1.4.0 version of gRPC Middleware (and indirects).
 
 ## [0.2]
 
