@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/getsentry/sentry-go v0.20.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
-	google.golang.org/grpc v1.54.0
+	google.golang.org/grpc v1.56.3
 )
 
 require (
