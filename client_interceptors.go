@@ -24,7 +24,12 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
-		span := sentry.StartSpan(ctx, "grpc.client")
+		operationName := defaultClientOperationName
+		if o.OperationNameOverride != "" {
+			operationName = o.OperationNameOverride
+		}
+
+		span := sentry.StartSpan(ctx, operationName)
 		ctx = span.Context()
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if ok {
@@ -60,7 +65,12 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
-		span := sentry.StartSpan(ctx, "grpc.client")
+		operationName := defaultClientOperationName
+		if o.OperationNameOverride != "" {
+			operationName = o.OperationNameOverride
+		}
+
+		span := sentry.StartSpan(ctx, operationName)
 		ctx = span.Context()
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if ok {
