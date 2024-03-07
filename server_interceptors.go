@@ -41,8 +41,13 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
+		operationName := defaultServerOperationName
+		if o.OperationNameOverride != "" {
+			operationName = o.OperationNameOverride
+		}
+
 		md, _ := metadata.FromIncomingContext(ctx) // nil check in ContinueFromGrpcMetadata
-		span := sentry.StartSpan(ctx, "grpc.server", ContinueFromGrpcMetadata(md))
+		span := sentry.StartSpan(ctx, operationName, ContinueFromGrpcMetadata(md))
 		ctx = span.Context()
 		defer span.Finish()
 
@@ -79,8 +84,13 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 			ctx = sentry.SetHubOnContext(ctx, hub)
 		}
 
+		operationName := defaultServerOperationName
+		if o.OperationNameOverride != "" {
+			operationName = o.OperationNameOverride
+		}
+
 		md, _ := metadata.FromIncomingContext(ctx) // nil check in ContinueFromGrpcMetadata
-		span := sentry.StartSpan(ctx, "grpc.server", ContinueFromGrpcMetadata(md))
+		span := sentry.StartSpan(ctx, operationName, ContinueFromGrpcMetadata(md))
 		ctx = span.Context()
 		defer span.Finish()
 

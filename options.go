@@ -7,13 +7,18 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-var defaultOptions = &options{
-		Repanic: false,
-		WaitForDelivery: false,
-		ReportOn: ReportAlways,
-		Timeout: 1 * time.Second,
-}
+const (
+	defaultServerOperationName = "grpc.server"
+	defaultClientOperationName = "grpc.client"
+)
 
+var defaultOptions = &options{
+	Repanic:               false,
+	WaitForDelivery:       false,
+	ReportOn:              ReportAlways,
+	Timeout:               1 * time.Second,
+	OperationNameOverride: "",
+}
 
 type options struct {
 	// Repanic configures whether Sentry should repanic after recovery.
@@ -26,8 +31,9 @@ type options struct {
 	Timeout time.Duration
 
 	ReportOn func(error) bool
-}
 
+	OperationNameOverride string
+}
 
 func ReportAlways(error) bool {
 	return true

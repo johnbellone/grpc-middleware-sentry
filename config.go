@@ -65,3 +65,15 @@ func (r *reportOnOption) Apply(o *options) {
 func WithReportOn(r reporter) Option {
 	return &reportOnOption{ReportOn: r}
 }
+
+type operationNameOverride struct {
+	OperationNameOverride string
+}
+
+func (r *operationNameOverride) Apply(o *options) {
+	o.OperationNameOverride = r.OperationNameOverride
+}
+
+func WithOperationNameOverride(s string) Option {
+	return &operationNameOverride{OperationNameOverride: s}
+}
