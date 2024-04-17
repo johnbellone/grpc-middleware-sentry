@@ -47,9 +47,20 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 		}
 
 		md, _ := metadata.FromIncomingContext(ctx) // nil check in ContinueFromGrpcMetadata
-		span := sentry.StartSpan(ctx, operationName, ContinueFromGrpcMetadata(md))
-		ctx = span.Context()
-		defer span.Finish()
+
+		// Use the FullMethod as transaction name and as description. This way the FullMethod will show up under
+		// the span, and under the transaction.
+		tx := sentry.StartTransaction(
+			ctx,
+			info.FullMethod,
+			sentry.WithOpName(operationName),
+			sentry.WithDescription(info.FullMethod),
+			sentry.WithTransactionSource(sentry.SourceURL),
+			ContinueFromGrpcMetadata(md),
+		)
+		tx.SetData("grpc.request.method", info.FullMethod)
+		ctx = tx.Context()
+		defer tx.Finish()
 
 		// TODO: Perhaps makes sense to use SetRequestBody instead?
 		hub.Scope().SetExtra("requestBody", req)
@@ -63,8 +74,11 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 			}
 
 			hub.CaptureException(err)
+
+			// Always sample when an error has occurred.
+			tx.Sampled = sentry.SampledTrue
 		}
-		span.Status = toSpanStatus(status.Code(err))
+		tx.Status = toSpanStatus(status.Code(err))
 
 		return resp, err
 	}
@@ -90,9 +104,20 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		}
 
 		md, _ := metadata.FromIncomingContext(ctx) // nil check in ContinueFromGrpcMetadata
-		span := sentry.StartSpan(ctx, operationName, ContinueFromGrpcMetadata(md))
-		ctx = span.Context()
-		defer span.Finish()
+
+		// Use the FullMethod as transaction name and as description. This way the FullMethod will show up under
+		// the span, and under the transaction.
+		tx := sentry.StartTransaction(
+			ctx,
+			info.FullMethod,
+			sentry.WithOpName(operationName),
+			sentry.WithDescription(info.FullMethod),
+			sentry.WithTransactionSource(sentry.SourceURL),
+			ContinueFromGrpcMetadata(md),
+		)
+		tx.SetData("grpc.request.method", info.FullMethod)
+		ctx = tx.Context()
+		defer tx.Finish()
 
 		stream := grpc_middleware.WrapServerStream(ss)
 		stream.WrappedContext = ctx
@@ -107,8 +132,11 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 			}
 
 			hub.CaptureException(err)
+
+			// Always sample when an error has occurred.
+			tx.Sampled = sentry.SampledTrue
 		}
-		span.Status = toSpanStatus(status.Code(err))
+		tx.Status = toSpanStatus(status.Code(err))
 
 		return err
 	}
@@ -118,23 +146,19 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 // an existing trace. If it cannot detect an existing trace in the request, the
 // span will be left unchanged.
 func ContinueFromGrpcMetadata(md metadata.MD) sentry.SpanOption {
-	return func(s *sentry.Span) {
-		if md == nil {
-			return
-		}
-
-		trace, ok := md["sentry-trace"]
-		if !ok {
-			return
-		}
-		if len(trace) != 1 {
-			return
-		}
-		if trace[0] == "" {
-			return
-		}
-		updateFromSentryTrace(s, []byte(trace[0]))
+	if md == nil {
+		return nil
 	}
+
+	var trace, baggage string
+	if traceMetadata, ok := md[sentry.SentryTraceHeader]; ok && len(traceMetadata) > 0 {
+		trace = traceMetadata[0]
+	}
+	if baggageMetadata, ok := md[sentry.SentryBaggageHeader]; ok && len(baggageMetadata) > 0 {
+		baggage = baggageMetadata[0]
+	}
+
+	return sentry.ContinueFromHeaders(trace, baggage)
 }
 
 // Re-export of functions from tracing.go of sentry-go
