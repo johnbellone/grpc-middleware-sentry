@@ -77,3 +77,15 @@ func (r *operationNameOverride) Apply(o *options) {
 func WithOperationNameOverride(s string) Option {
 	return &operationNameOverride{OperationNameOverride: s}
 }
+
+type captureRequestBodyOption struct {
+	CaptureRequestBody bool
+}
+
+func (c *captureRequestBodyOption) Apply(o *options) {
+	o.CaptureRequestBody = c.CaptureRequestBody
+}
+
+func WithCaptureRequestBody(b bool) Option {
+	return &captureRequestBodyOption{CaptureRequestBody: b}
+}

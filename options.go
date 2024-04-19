@@ -18,6 +18,7 @@ var defaultOptions = &options{
 	ReportOn:              ReportAlways,
 	Timeout:               1 * time.Second,
 	OperationNameOverride: "",
+	CaptureRequestBody:    true,
 }
 
 type options struct {
@@ -33,6 +34,9 @@ type options struct {
 	ReportOn func(error) bool
 
 	OperationNameOverride string
+
+	// CaptureRequestBody configures whether the request body should be sent to Sentry.
+	CaptureRequestBody bool
 }
 
 func ReportAlways(error) bool {
