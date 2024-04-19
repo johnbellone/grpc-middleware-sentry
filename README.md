@@ -35,8 +35,5 @@ func main() {
 }
 ```
 
-## License
-`grpc-middleware-sentry` is released under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
-
 [0]: https://github.com/grpc-ecosystem/go-grpc-middleware
 [1]: https://sentry.io
