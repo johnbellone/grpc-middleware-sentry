@@ -13,6 +13,8 @@ Types of changes:
 - `Fixed` for any bug fixes.
 - `Security` in case of vulnerabilities.
 
+## [0.4]
+
 ## [0.3]
 
 ### Changed
