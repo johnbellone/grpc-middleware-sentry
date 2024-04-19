@@ -29,13 +29,18 @@ func UnaryClientInterceptor(opts ...Option) grpc.UnaryClientInterceptor {
 			operationName = o.OperationNameOverride
 		}
 
-		span := sentry.StartSpan(ctx, operationName)
+		span := sentry.StartSpan(ctx, operationName, sentry.WithDescription(method))
+		span.SetData("grpc.request.method", method)
 		ctx = span.Context()
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if ok {
-			md.Append("sentry-trace", span.ToSentryTrace())
+			md.Append(sentry.SentryTraceHeader, span.ToSentryTrace())
+			md.Append(sentry.SentryBaggageHeader, span.ToBaggage())
 		} else {
-			md = metadata.Pairs("sentry-trace", span.ToSentryTrace())
+			md = metadata.Pairs(
+				sentry.SentryTraceHeader, span.ToSentryTrace(),
+				sentry.SentryBaggageHeader, span.ToBaggage(),
+			)
 		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()
@@ -70,13 +75,16 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 			operationName = o.OperationNameOverride
 		}
 
-		span := sentry.StartSpan(ctx, operationName)
+		span := sentry.StartSpan(ctx, operationName, sentry.WithDescription(method))
+		span.SetData("grpc.request.method", method)
 		ctx = span.Context()
 		md, ok := metadata.FromOutgoingContext(ctx)
 		if ok {
-			md.Append("sentry-trace", span.ToSentryTrace())
+			md.Append(sentry.SentryTraceHeader, span.ToSentryTrace())
+			md.Append(sentry.SentryBaggageHeader, span.ToBaggage())
 		} else {
-			md = metadata.Pairs("sentry-trace", span.ToSentryTrace())
+			md = metadata.Pairs(sentry.SentryTraceHeader, span.ToSentryTrace())
+			md = metadata.Pairs(sentry.SentryBaggageHeader, span.ToBaggage())
 		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()
