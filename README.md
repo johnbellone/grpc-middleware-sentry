@@ -1,8 +1,4 @@
 # Go gRPC Middleware for Sentry
-
-![GitHub Workflow](https://img.shields.io/github/workflow/status/johnbellone/grpc-middleware-sentry/go-workflow?style=for-the-badge)
-[![Apache 2.0 License](https://img.shields.io/badge/License-Apache%202.0-blue.svg?style=for-the-badge)](LICENSE)
-
 [gRPC Go middleware][0] for [Sentry][1]: server and client interceptors
 
 ## Middleware
@@ -40,7 +36,6 @@ func main() {
 ```
 
 ## License
-
 `grpc-middleware-sentry` is released under the Apache 2.0 license. See the [LICENSE](LICENSE) file for details.
 
 [0]: https://github.com/grpc-ecosystem/go-grpc-middleware
