@@ -3,7 +3,7 @@ module github.com/johnbellone/grpc-middleware-sentry
 go 1.17
 
 require (
-	github.com/getsentry/sentry-go v0.28.1
+	github.com/getsentry/sentry-go v0.29.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
 	google.golang.org/grpc v1.65.0
 )
