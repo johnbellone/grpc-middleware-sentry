@@ -161,7 +161,11 @@ func ContinueFromGrpcMetadata(md metadata.MD) sentry.SpanOption {
 		baggage = baggageMetadata[0]
 	}
 
-	return sentry.ContinueFromHeaders(trace, baggage)
+	// Only return span option if we have valid trace data
+	if trace != "" {
+		return sentry.ContinueFromHeaders(trace, baggage)
+	}
+	return nil
 }
 
 // Re-export of functions from tracing.go of sentry-go
@@ -173,8 +177,14 @@ func updateFromSentryTrace(s *sentry.Span, header []byte) {
 		// no match
 		return
 	}
-	_, _ = hex.Decode(s.TraceID[:], m[1])
-	_, _ = hex.Decode(s.ParentSpanID[:], m[2])
+	if _, err := hex.Decode(s.TraceID[:], m[1]); err != nil {
+		// Log error for debugging but don't fail the operation
+		sentry.GetHubFromContext(context.Background()).CaptureException(err)
+	}
+	if _, err := hex.Decode(s.ParentSpanID[:], m[2]); err != nil {
+		// Log error for debugging but don't fail the operation
+		sentry.GetHubFromContext(context.Background()).CaptureException(err)
+	}
 	if len(m[3]) != 0 {
 		switch m[3][0] {
 		case '0':

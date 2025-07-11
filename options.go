@@ -40,11 +40,13 @@ type options struct {
 	CaptureRequestBody bool
 }
 
+// ReportAlways is a reporter function that always reports errors to Sentry.
 func ReportAlways(error) bool {
 	return true
 }
 
-func ReportOnCodes(cc ...codes.Code) reporter {
+// ReportOnCodes returns a reporter function that only reports errors matching the specified gRPC status codes.
+func ReportOnCodes(cc ...codes.Code) func(error) bool {
 	return func(err error) bool {
 		for i := range cc {
 			if status.Code(err) == cc[i] {

@@ -84,8 +84,10 @@ func StreamClientInterceptor(opts ...Option) grpc.StreamClientInterceptor {
 			md.Append(sentry.SentryTraceHeader, span.ToSentryTrace())
 			md.Append(sentry.SentryBaggageHeader, span.ToBaggage())
 		} else {
-			md = metadata.Pairs(sentry.SentryTraceHeader, span.ToSentryTrace())
-			md = metadata.Pairs(sentry.SentryBaggageHeader, span.ToBaggage())
+			md = metadata.Pairs(
+				sentry.SentryTraceHeader, span.ToSentryTrace(),
+				sentry.SentryBaggageHeader, span.ToBaggage(),
+			)
 		}
 		ctx = metadata.NewOutgoingContext(ctx, md)
 		defer span.Finish()

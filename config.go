@@ -14,6 +14,15 @@ func newConfig(opts []Option) *options {
 	for _, o := range opts {
 		o.Apply(c)
 	}
+
+	// Validate configuration to prevent runtime issues
+	if c.Timeout <= 0 {
+		c.Timeout = 1 * time.Second // Ensure minimum timeout
+	}
+	if c.ReportOn == nil {
+		c.ReportOn = ReportAlways // Ensure ReportOn is never nil
+	}
+
 	return c
 }
 
