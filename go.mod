@@ -6,7 +6,7 @@ toolchain go1.24.4
 
 require (
 	github.com/getsentry/sentry-go v0.34.1
-	github.com/grpc-ecosystem/go-grpc-middleware v1.4.0
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.3.2
 	google.golang.org/grpc v1.73.0
 )
 
