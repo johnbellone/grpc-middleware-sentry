@@ -7,8 +7,8 @@ import (
 	"regexp"
 
 	"github.com/getsentry/sentry-go"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_tags "github.com/grpc-ecosystem/go-grpc-middleware/tags"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2"
+	grpc_logging "github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -71,9 +71,8 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 
 		resp, err := handler(ctx, req)
 		if err != nil && o.ReportOn(err) {
-			tags := grpc_tags.Extract(ctx)
-			for k, v := range tags.Values() {
-				hub.Scope().SetTag(k, v.(string))
+			for k, v := range prepareLoggingFields(ctx) {
+				hub.Scope().SetTag(k, v)
 			}
 
 			hub.CaptureException(err)
@@ -129,9 +128,8 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 
 		err := handler(srv, stream)
 		if err != nil && o.ReportOn(err) {
-			tags := grpc_tags.Extract(ctx)
-			for k, v := range tags.Values() {
-				hub.Scope().SetTag(k, v.(string))
+			for k, v := range prepareLoggingFields(ctx) {
+				hub.Scope().SetTag(k, v)
 			}
 
 			hub.CaptureException(err)
@@ -234,4 +232,19 @@ func toSpanStatus(code codes.Code) sentry.SpanStatus {
 	default:
 		return sentry.SpanStatusUndefined
 	}
+}
+
+func prepareLoggingFields(ctx context.Context) map[string]string {
+	ret := make(map[string]string)
+	fields := grpc_logging.ExtractFields(ctx)
+	var label string
+	for k, v := range fields {
+		if k%2 == 0 {
+			label = v.(string)
+		} else {
+			ret[label] = v.(string)
+		}
+	}
+
+	return ret
 }
