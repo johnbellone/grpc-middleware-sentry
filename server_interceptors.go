@@ -48,16 +48,23 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 		}
 
 		md, _ := metadata.FromIncomingContext(ctx) // nil check in ContinueFromGrpcMetadata
+		mdOpt := ContinueFromGrpcMetadata(md)
+
+		spanOptions := []sentry.SpanOption{
+			sentry.WithOpName(operationName),
+			sentry.WithDescription(info.FullMethod),
+			sentry.WithTransactionSource(sentry.SourceURL),
+		}
+		if mdOpt != nil {
+			spanOptions = append(spanOptions, mdOpt)
+		}
 
 		// Use the FullMethod as transaction name and as description. This way the FullMethod will show up under
 		// the span, and under the transaction.
 		tx := sentry.StartTransaction(
 			ctx,
 			info.FullMethod,
-			sentry.WithOpName(operationName),
-			sentry.WithDescription(info.FullMethod),
-			sentry.WithTransactionSource(sentry.SourceURL),
-			ContinueFromGrpcMetadata(md),
+			spanOptions...,
 		)
 		tx.SetData("grpc.request.method", info.FullMethod)
 		ctx = tx.Context()
@@ -107,16 +114,23 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		}
 
 		md, _ := metadata.FromIncomingContext(ctx) // nil check in ContinueFromGrpcMetadata
+		mdOpt := ContinueFromGrpcMetadata(md)
+
+		spanOptions := []sentry.SpanOption{
+			sentry.WithOpName(operationName),
+			sentry.WithDescription(info.FullMethod),
+			sentry.WithTransactionSource(sentry.SourceURL),
+		}
+		if mdOpt != nil {
+			spanOptions = append(spanOptions, mdOpt)
+		}
 
 		// Use the FullMethod as transaction name and as description. This way the FullMethod will show up under
 		// the span, and under the transaction.
 		tx := sentry.StartTransaction(
 			ctx,
 			info.FullMethod,
-			sentry.WithOpName(operationName),
-			sentry.WithDescription(info.FullMethod),
-			sentry.WithTransactionSource(sentry.SourceURL),
-			ContinueFromGrpcMetadata(md),
+			spanOptions...,
 		)
 		tx.SetData("grpc.request.method", info.FullMethod)
 		ctx = tx.Context()
