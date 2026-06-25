@@ -16,7 +16,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-func recoverWithSentry(hub *sentry.Hub, ctx context.Context, o *options) {
+// recoverWithSentry recovers from a panic in the handler, reports it to Sentry
+// and, unless Repanic is enabled, translates it into a codes.Internal error via
+// outErr (and marks the transaction as failed).
+//
+// Without this translation the interceptor would fall through to its zero-value
+// return — a nil error — making gRPC treat the RPC as successful: a streaming
+// handler reports OK with a missing/partial response, and a unary handler
+// returns a nil response that fails to marshal with an opaque Internal error.
+func recoverWithSentry(hub *sentry.Hub, ctx context.Context, o *options, tx *sentry.Span, outErr *error) {
 	if err := recover(); err != nil {
 		eventID := hub.RecoverWithContext(ctx, err)
 		if eventID != nil && o.WaitForDelivery {
@@ -26,6 +34,13 @@ func recoverWithSentry(hub *sentry.Hub, ctx context.Context, o *options) {
 		if o.Repanic {
 			panic(err)
 		}
+
+		if outErr != nil {
+			*outErr = status.Errorf(codes.Internal, "%v", err)
+		}
+		if tx != nil {
+			tx.Status = sentry.SpanStatusInternalError
+		}
 	}
 }
 
@@ -34,7 +49,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context,
 		req interface{},
 		info *grpc.UnaryServerInfo,
-		handler grpc.UnaryHandler) (interface{}, error) {
+		handler grpc.UnaryHandler) (resp interface{}, err error) {
 
 		hub := sentry.GetHubFromContext(ctx)
 		if hub == nil {
@@ -67,9 +82,9 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 			// TODO: Perhaps makes sense to use SetRequestBody instead?
 			hub.Scope().SetExtra("requestBody", req)
 		}
-		defer recoverWithSentry(hub, ctx, o)
+		defer recoverWithSentry(hub, ctx, o, tx, &err)
 
-		resp, err := handler(ctx, req)
+		resp, err = handler(ctx, req)
 		if err != nil && o.ReportOn(err) {
 			tags := grpc_tags.Extract(ctx)
 			for k, v := range tags.Values() {
@@ -92,7 +107,7 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 	return func(srv interface{},
 		ss grpc.ServerStream,
 		info *grpc.StreamServerInfo,
-		handler grpc.StreamHandler) error {
+		handler grpc.StreamHandler) (err error) {
 
 		ctx := ss.Context()
 		hub := sentry.GetHubFromContext(ctx)
@@ -125,9 +140,9 @@ func StreamServerInterceptor(opts ...Option) grpc.StreamServerInterceptor {
 		stream := grpc_middleware.WrapServerStream(ss)
 		stream.WrappedContext = ctx
 
-		defer recoverWithSentry(hub, ctx, o)
+		defer recoverWithSentry(hub, ctx, o, tx, &err)
 
-		err := handler(srv, stream)
+		err = handler(srv, stream)
 		if err != nil && o.ReportOn(err) {
 			tags := grpc_tags.Extract(ctx)
 			for k, v := range tags.Values() {
