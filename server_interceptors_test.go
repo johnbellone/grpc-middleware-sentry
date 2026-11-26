@@ -10,6 +10,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 // mockUnaryHandler is a mock handler for testing unary interceptors
@@ -44,12 +45,12 @@ type mockServerStream struct {
 	ctx context.Context
 }
 
-func (m *mockServerStream) SetHeader(metadata.MD) error   { return nil }
-func (m *mockServerStream) SendHeader(metadata.MD) error  { return nil }
-func (m *mockServerStream) SetTrailer(metadata.MD)        {}
-func (m *mockServerStream) Context() context.Context      { return m.ctx }
-func (m *mockServerStream) SendMsg(interface{}) error     { return nil }
-func (m *mockServerStream) RecvMsg(interface{}) error     { return nil }
+func (m *mockServerStream) SetHeader(metadata.MD) error  { return nil }
+func (m *mockServerStream) SendHeader(metadata.MD) error { return nil }
+func (m *mockServerStream) SetTrailer(metadata.MD)       {}
+func (m *mockServerStream) Context() context.Context     { return m.ctx }
+func (m *mockServerStream) SendMsg(interface{}) error    { return nil }
+func (m *mockServerStream) RecvMsg(interface{}) error    { return nil }
 
 func TestUnaryServerInterceptor_Configuration(t *testing.T) {
 	// Test that the interceptor can be created with different options
@@ -159,6 +160,105 @@ func TestStreamServerInterceptor_Configuration(t *testing.T) {
 				t.Error("Expected interceptor to be created, got nil")
 			}
 		})
+	}
+}
+
+// tracedIncomingContext returns a server-side context carrying a valid
+// sentry-trace header, mirroring a real request whose caller propagates the
+// trace. Without a trace header, StartTransaction is invoked with a nil
+// SpanOption from ContinueFromGrpcMetadata, which is an unrelated concern.
+func tracedIncomingContext() context.Context {
+	md := metadata.New(map[string]string{
+		sentry.SentryTraceHeader: "1234567890abcdef1234567890abcdef-1234567890abcdef-1",
+	})
+	return metadata.NewIncomingContext(context.Background(), md)
+}
+
+func TestUnaryServerInterceptor_RecoversPanicAsInternal(t *testing.T) {
+	// With the default options (Repanic disabled), a panicking handler must be
+	// recovered and returned as a codes.Internal error rather than a nil error.
+	interceptor := UnaryServerInterceptor()
+	handler := &mockUnaryHandler{panic: true}
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
+
+	resp, err := interceptor(tracedIncomingContext(), "request", info, handler.handle)
+
+	if resp != nil {
+		t.Errorf("Expected nil response on panic, got %v", resp)
+	}
+	if got := status.Code(err); got != codes.Internal {
+		t.Fatalf("Expected codes.Internal, got %v (err=%v)", got, err)
+	}
+}
+
+func TestUnaryServerInterceptor_RepanicsWhenEnabled(t *testing.T) {
+	// With Repanic enabled the panic must propagate to the caller unchanged.
+	interceptor := UnaryServerInterceptor(WithRepanicOption(true))
+	handler := &mockUnaryHandler{panic: true}
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected interceptor to re-panic, but it did not")
+		}
+	}()
+	_, _ = interceptor(tracedIncomingContext(), "request", info, handler.handle)
+}
+
+func TestUnaryServerInterceptor_PassesThroughError(t *testing.T) {
+	// A normal handler error must be returned unchanged.
+	interceptor := UnaryServerInterceptor()
+	handler := &mockUnaryHandler{err: status.Error(codes.NotFound, "missing")}
+	info := &grpc.UnaryServerInfo{FullMethod: "/test.Service/Method"}
+
+	_, err := interceptor(tracedIncomingContext(), "request", info, handler.handle)
+
+	if got := status.Code(err); got != codes.NotFound {
+		t.Fatalf("Expected codes.NotFound to pass through, got %v (err=%v)", got, err)
+	}
+}
+
+func TestStreamServerInterceptor_RecoversPanicAsInternal(t *testing.T) {
+	// With the default options (Repanic disabled), a panicking handler must be
+	// recovered and returned as a codes.Internal error rather than a nil error.
+	interceptor := StreamServerInterceptor()
+	handler := &mockStreamHandler{panic: true}
+	info := &grpc.StreamServerInfo{FullMethod: "/test.Service/Stream"}
+	stream := &mockServerStream{ctx: tracedIncomingContext()}
+
+	err := interceptor(nil, stream, info, handler.handle)
+
+	if got := status.Code(err); got != codes.Internal {
+		t.Fatalf("Expected codes.Internal, got %v (err=%v)", got, err)
+	}
+}
+
+func TestStreamServerInterceptor_RepanicsWhenEnabled(t *testing.T) {
+	// With Repanic enabled the panic must propagate to the caller unchanged.
+	interceptor := StreamServerInterceptor(WithRepanicOption(true))
+	handler := &mockStreamHandler{panic: true}
+	info := &grpc.StreamServerInfo{FullMethod: "/test.Service/Stream"}
+	stream := &mockServerStream{ctx: tracedIncomingContext()}
+
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("Expected interceptor to re-panic, but it did not")
+		}
+	}()
+	_ = interceptor(nil, stream, info, handler.handle)
+}
+
+func TestStreamServerInterceptor_PassesThroughError(t *testing.T) {
+	// A normal handler error must be returned unchanged.
+	interceptor := StreamServerInterceptor()
+	handler := &mockStreamHandler{err: status.Error(codes.NotFound, "missing")}
+	info := &grpc.StreamServerInfo{FullMethod: "/test.Service/Stream"}
+	stream := &mockServerStream{ctx: tracedIncomingContext()}
+
+	err := interceptor(nil, stream, info, handler.handle)
+
+	if got := status.Code(err); got != codes.NotFound {
+		t.Fatalf("Expected codes.NotFound to pass through, got %v (err=%v)", got, err)
 	}
 }
 
