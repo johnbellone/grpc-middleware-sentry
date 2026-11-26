@@ -64,8 +64,7 @@ func UnaryServerInterceptor(opts ...Option) grpc.UnaryServerInterceptor {
 		defer tx.Finish()
 
 		if o.CaptureRequestBody {
-			// TODO: Perhaps makes sense to use SetRequestBody instead?
-			hub.Scope().SetExtra("requestBody", req)
+			hub.Scope().SetContext("requestBody", sentry.Context{"data": req})
 		}
 		defer recoverWithSentry(hub, ctx, o)
 
